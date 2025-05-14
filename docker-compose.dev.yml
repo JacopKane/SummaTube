@@ -4,7 +4,7 @@ services:
   backend:
     build:
       context: ./backend
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
     restart: always
     ports:
       - "8001:8001"
@@ -12,6 +12,10 @@ services:
       - ./backend/.env
     networks:
       - summatube-network
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    command: npm run start:dev
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8001/api/health"]
       interval: 30s
@@ -22,7 +26,7 @@ services:
   frontend:
     build:
       context: ./frontend
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
     restart: always
     ports:
       - "8000:8000"
@@ -30,12 +34,15 @@ services:
       - ./frontend/.env
     networks:
       - summatube-network
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    command: npm run dev -- -p 8000
     depends_on:
       backend:
         condition: service_healthy
     environment:
       - NEXT_PUBLIC_API_URL=http://backend:8001/api
-      - EXTERNAL_API_URL=http://localhost:8001/api
     healthcheck:
       test: ["CMD", "node", "check-connectivity.js"]
       interval: 30s

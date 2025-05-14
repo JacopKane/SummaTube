@@ -1,8 +1,8 @@
-import { Module } from '@nestjs/common';
-import { SummaryController } from './summary.controller';
-import { SummaryService } from './summary.service';
-import { YoutubeModule } from '../youtube/youtube.module';
-import { AuthModule } from '../auth/auth.module';
+import { Module } from "@nestjs/common";
+import { SummaryController } from "./summary.controller";
+import { SummaryService } from "./summary.service";
+import { YoutubeModule } from "../youtube/youtube.module";
+import { AuthModule } from "../auth/auth.module";
 
 @Module({
   imports: [YoutubeModule, AuthModule],

@@ -4,9 +4,9 @@ import { YoutubeService } from "./youtube.service";
 import { AuthModule } from "../auth/auth.module";
 
 @Module({
-    imports: [AuthModule],
-    controllers: [YoutubeController],
-    providers: [YoutubeService],
-    exports: [YoutubeService],
+  imports: [AuthModule],
+  controllers: [YoutubeController],
+  providers: [YoutubeService],
+  exports: [YoutubeService],
 })
 export class YoutubeModule {}

@@ -1,7 +1,7 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import OpenAI from 'openai';
-import { YoutubeService } from '../youtube/youtube.service';
+import { Injectable, Logger } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import OpenAI from "openai";
+import { YoutubeService } from "../youtube/youtube.service";
 
 interface SummaryResponse {
   summary: string;
@@ -16,40 +16,54 @@ export class SummaryService {
 
   constructor(
     private configService: ConfigService,
-    private youtubeService: YoutubeService,
+    private youtubeService: YoutubeService
   ) {
     this.openai = new OpenAI({
-      apiKey: this.configService.get<string>('OPENAI_API_KEY'),
+      apiKey: this.configService.get<string>("OPENAI_API_KEY"),
     });
-    this.maxTokensPerSummarization = this.configService.get<number>('MAX_TOKENS_PER_SUMMARIZATION') || 2000;
-    this.model = this.configService.get<string>('OPENAI_MODEL') || 'gpt-4';
+    this.maxTokensPerSummarization =
+      this.configService.get<number>("MAX_TOKENS_PER_SUMMARIZATION") || 2000;
+    this.model = this.configService.get<string>("OPENAI_MODEL") || "gpt-4";
   }
 
-  async generateVideoSummary(videoId: string, accessToken: string): Promise<string> {
+  async generateVideoSummary(
+    videoId: string,
+    accessToken: string
+  ): Promise<string> {
     try {
       // Fetch the video transcript
-      const transcript = await this.youtubeService.getVideoTranscript(videoId, accessToken);
-      
+      const transcript = await this.youtubeService.getVideoTranscript(
+        videoId,
+        accessToken
+      );
+
       if (!transcript) {
-        throw new Error('No transcript available for this video');
+        throw new Error("No transcript available for this video");
       }
 
       // Generate summary through iterative summarization
       return this.iterativeSummarization(transcript);
     } catch (error) {
-      this.logger.error(`Error generating summary for video ${videoId}:`, error);
-      throw new Error('Failed to generate video summary');
+      this.logger.error(
+        `Error generating summary for video ${videoId}:`,
+        error
+      );
+      throw new Error("Failed to generate video summary");
     }
   }
 
   private async iterativeSummarization(transcript: string): Promise<string> {
     // If the transcript is short enough, summarize it directly
-    if (transcript.length < this.maxTokensPerSummarization * 4) { // Rough estimation
+    if (transcript.length < this.maxTokensPerSummarization * 4) {
+      // Rough estimation
       return this.summarizeContent(transcript);
     }
 
     // Split the transcript into chunks and summarize each chunk
-    const chunks = this.splitText(transcript, this.maxTokensPerSummarization * 4);
+    const chunks = this.splitText(
+      transcript,
+      this.maxTokensPerSummarization * 4
+    );
     let partialSummaries: string[] = [];
 
     for (const chunk of chunks) {
@@ -59,8 +73,8 @@ export class SummaryService {
 
     // If we still have multiple summaries, recursively summarize them
     while (partialSummaries.length > 1) {
-      const combinedText = partialSummaries.join('\n\n');
-      
+      const combinedText = partialSummaries.join("\n\n");
+
       if (combinedText.length < this.maxTokensPerSummarization * 4) {
         return this.summarizeContent(combinedText);
       }
@@ -68,14 +82,14 @@ export class SummaryService {
       // Process the partial summaries in batches
       const newPartialSummaries: string[] = [];
       const batchSize = 3; // Number of summaries to combine in one batch
-      
+
       for (let i = 0; i < partialSummaries.length; i += batchSize) {
         const batch = partialSummaries.slice(i, i + batchSize);
-        const batchText = batch.join('\n\n');
+        const batchText = batch.join("\n\n");
         const batchSummary = await this.summarizeContent(batchText);
         newPartialSummaries.push(batchSummary);
       }
-      
+
       partialSummaries = newPartialSummaries;
     }
 
@@ -88,16 +102,17 @@ export class SummaryService {
         model: this.model,
         messages: [
           {
-            role: 'system',
-            content: 'You are an expert at summarizing video transcripts. Extract key points and main ideas concisely.'
+            role: "system",
+            content:
+              "You are an expert at summarizing video transcripts. Extract key points and main ideas concisely.",
           },
-          { 
-            role: 'user', 
-            content: `Summarize the following transcript in a clear, concise manner. Focus on the main points and key takeaways:\n\n${transcriptContent}`
-          }
+          {
+            role: "user",
+            content: `Summarize the following transcript in a clear, concise manner. Focus on the main points and key takeaways:\n\n${transcriptContent}`,
+          },
         ],
-        response_format: { 
-          type: "json_object" 
+        response_format: {
+          type: "json_object",
         },
       });
 
@@ -106,23 +121,23 @@ export class SummaryService {
         const response = JSON.parse(messageContent) as SummaryResponse;
         return response.summary;
       }
-      throw new Error('Failed to get summary content from OpenAI');
+      throw new Error("Failed to get summary content from OpenAI");
     } catch (error) {
-      this.logger.error('Error summarizing content with OpenAI:', error);
+      this.logger.error("Error summarizing content with OpenAI:", error);
       throw error;
     }
   }
 
   private splitText(text: string, maxChunkSize: number): string[] {
     const chunks: string[] = [];
-    let currentChunk = '';
+    let currentChunk = "";
 
     // Split by paragraphs or lines
     const paragraphs = text.split(/\n\s*\n|\r\n\s*\r\n/);
-    
+
     for (const paragraph of paragraphs) {
       if ((currentChunk + paragraph).length <= maxChunkSize) {
-        currentChunk += (currentChunk ? '\n\n' : '') + paragraph;
+        currentChunk += (currentChunk ? "\n\n" : "") + paragraph;
       } else {
         if (currentChunk) {
           chunks.push(currentChunk);
@@ -130,11 +145,11 @@ export class SummaryService {
         } else {
           // If a single paragraph is too long, we need to split it
           const sentences = paragraph.split(/(?<=[.!?])\s+/);
-          let sentenceChunk = '';
-          
+          let sentenceChunk = "";
+
           for (const sentence of sentences) {
             if ((sentenceChunk + sentence).length <= maxChunkSize) {
-              sentenceChunk += (sentenceChunk ? ' ' : '') + sentence;
+              sentenceChunk += (sentenceChunk ? " " : "") + sentence;
             } else {
               if (sentenceChunk) {
                 chunks.push(sentenceChunk);
@@ -145,18 +160,18 @@ export class SummaryService {
               }
             }
           }
-          
+
           if (sentenceChunk) {
             currentChunk = sentenceChunk;
           }
         }
       }
     }
-    
+
     if (currentChunk) {
       chunks.push(currentChunk);
     }
-    
+
     return chunks;
   }
 }

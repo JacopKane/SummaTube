@@ -50,7 +50,7 @@ FRONTEND_URL=http://localhost:3000
 # YouTube API Configuration
 YOUTUBE_CLIENT_ID=your_youtube_client_id
 YOUTUBE_CLIENT_SECRET=your_youtube_client_secret
-YOUTUBE_CALLBACK_URL=http://localhost:3001/api/auth/youtube/callback
+YOUTUBE_CALLBACK_URL=http://localhost:8001/api/auth/youtube/callback
 
 # OpenAI API Configuration
 OPENAI_API_KEY=your_openai_api_key
