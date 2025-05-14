@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { OAuth2Client } from "google-auth-library";
 import { ConfigService } from "@nestjs/config";
+import fetch from "node-fetch";
 
 @Injectable()
 export class AuthService {
@@ -35,13 +36,27 @@ export class AuthService {
 
   async validateToken(token: string) {
     try {
-      const ticket = await this.oauth2Client.verifyIdToken({
-        idToken: token,
-        audience: this.configService.get("YOUTUBE_CLIENT_ID"),
-      });
+      // For access tokens, we need to validate by making a request to Google's tokeninfo endpoint
+      const response = await fetch(
+        `https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=${token}`
+      );
 
-      return ticket.getPayload();
+      if (response.status !== 200) {
+        console.error("Token validation failed:", await response.text());
+        return null;
+      }
+
+      const data = await response.json();
+
+      // Check if the token is for our app
+      if (data.audience !== this.configService.get("YOUTUBE_CLIENT_ID")) {
+        console.error("Token was issued for a different client ID");
+        return null;
+      }
+
+      return data;
     } catch (error) {
+      console.error("Token validation error:", error);
       return null;
     }
   }

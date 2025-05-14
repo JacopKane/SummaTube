@@ -14,7 +14,7 @@ export const useVideoSummary = (videoId: string, enabled: boolean = true) => {
       if (!token) throw new Error("Not authenticated");
 
       const response = await axios.get<VideoSummaryResponse>(
-        `${process.env.NEXT_PUBLIC_API_URL}/summary/${videoId}`,
+        `/api/summary/${videoId}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,

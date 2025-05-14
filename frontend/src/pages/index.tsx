@@ -7,12 +7,31 @@ export default function Home() {
   const router = useRouter();
 
   useEffect(() => {
-    // Check if user is already authenticated
-    const token = localStorage.getItem('youtube_token');
-    if (token) {
-      router.push('/feed');
+    // Handle auth callback if token is in URL
+    if (router.isReady) {
+      const { token, error } = router.query;
+      
+      if (error) {
+        console.error('Authentication error:', error);
+        return;
+      }
+      
+      if (token) {
+        // Store the token in localStorage
+        localStorage.setItem('youtube_token', token as string);
+        
+        // Redirect to the feed page
+        router.push('/feed');
+        return;
+      }
+      
+      // Check if user is already authenticated
+      const storedToken = localStorage.getItem('youtube_token');
+      if (storedToken) {
+        router.push('/feed');
+      }
     }
-  }, [router]);
+  }, [router, router.isReady]);
 
   return (
     <>

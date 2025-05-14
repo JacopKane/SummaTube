@@ -42,7 +42,8 @@ services:
       backend:
         condition: service_healthy
     environment:
-      - NEXT_PUBLIC_API_URL=http://backend:8001/api
+      - NEXT_PUBLIC_API_URL=http://localhost:8001/api
+      - INTERNAL_API_URL=http://backend:8001/api
     healthcheck:
       test: ["CMD", "node", "check-connectivity.js"]
       interval: 30s

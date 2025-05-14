@@ -31,13 +31,23 @@ export default function Feed() {
   const { data: feedItems, isLoading, error } = useQuery({
     queryKey: ['feed'],
     queryFn: async () => {
-      const token = localStorage.getItem('youtube_token');
-      const { data } = await axios.get<VideoFeedItem[]>('/api/youtube/feed', {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
-      return data;
+      try {
+        const token = localStorage.getItem('youtube_token');
+        console.log('Making API request to fetch feed with token:', token?.substring(0, 10) + '...');
+        
+        // Use /api for relative path to leverage Next.js rewrites
+        const { data } = await axios.get<VideoFeedItem[]>('/api/youtube/feed', {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
+        
+        console.log('Feed data received:', data?.length || 0, 'items');
+        return data;
+      } catch (error) {
+        console.error('Error fetching feed:', error);
+        throw error;
+      }
     },
     enabled: authenticated,
     refetchInterval: 60000, // Refetch every minute
@@ -52,7 +62,21 @@ export default function Feed() {
   }
 
   if (error) {
-    return <div className="flex justify-center items-center min-h-screen">Error loading feed. Please try again later.</div>;
+    console.error('Feed loading error:', error);
+    return (
+      <div className="flex flex-col justify-center items-center min-h-screen">
+        <p className="text-xl mb-4">Error loading feed. Please try again later.</p>
+        <button
+          onClick={() => {
+            localStorage.removeItem('youtube_token');
+            router.push('/');
+          }}
+          className="bg-red-600 text-white px-6 py-2 rounded hover:bg-red-700 transition-colors"
+        >
+          Sign in again
+        </button>
+      </div>
+    );
   }
 
   return (
