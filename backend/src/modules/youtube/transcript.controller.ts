@@ -1,33 +1,26 @@
 import {
   Controller,
   Get,
+  Param,
   Req,
   UnauthorizedException,
-  UseGuards,
 } from "@nestjs/common";
 import { Request } from "express";
 import { YoutubeService } from "./youtube.service";
 import { AuthService } from "../auth/auth.service";
 
-@Controller("youtube")
-export class YoutubeController {
+@Controller("transcripts")
+export class TranscriptController {
   constructor(
     private readonly youtubeService: YoutubeService,
     private readonly authService: AuthService
   ) {}
 
-  @Get("feed")
-  async getUserFeed(@Req() req: Request): Promise<
-    {
-      id: string;
-      title: string;
-      thumbnail: string;
-      publishedAt: string;
-      content: string | null;
-      summaryStatus: string;
-      videoUrl: string;
-    }[]
-  > {
+  @Get(":videoId")
+  async getVideoTranscript(
+    @Param("videoId") videoId: string,
+    @Req() req: Request
+  ): Promise<{ videoId: string; transcript: string }> {
     const authHeader = req.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
@@ -42,10 +35,20 @@ export class YoutubeController {
     }
 
     try {
-      return await this.youtubeService.getUserFeed(token);
+      const transcript = await this.youtubeService.getVideoTranscript(
+        videoId,
+        token
+      );
+      return {
+        videoId,
+        transcript,
+      };
     } catch (error) {
       // Check specifically for quota errors
-      if (error?.response?.status === 403 && error?.errors?.[0]?.reason === "quotaExceeded") {
+      if (
+        error?.response?.status === 403 &&
+        error?.errors?.[0]?.reason === "quotaExceeded"
+      ) {
         throw new UnauthorizedException(
           "YouTube API quota has been exceeded. Please try again later (quotas typically reset at midnight Pacific Time)."
         );

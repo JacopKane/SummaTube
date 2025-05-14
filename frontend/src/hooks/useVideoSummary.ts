@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import axios from "axios";
+import { ApiError, handleApiError } from "@/utils/errorHandling";
+import api from "@/utils/api";
 
 interface VideoSummaryResponse {
   videoId: string;
@@ -7,24 +8,32 @@ interface VideoSummaryResponse {
 }
 
 export const useVideoSummary = (videoId: string, enabled: boolean = true) => {
-  return useQuery({
+  return useQuery<string, ApiError>({
     queryKey: ["summary", videoId],
     queryFn: async (): Promise<string> => {
-      const token = localStorage.getItem("youtube_token");
-      if (!token) throw new Error("Not authenticated");
+      try {
+        if (!videoId) throw new Error("No video ID provided");
 
-      const response = await axios.get<VideoSummaryResponse>(
-        `/api/summary/${videoId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+        // Use our API client which automatically adds the token
+        const response = await api.get<VideoSummaryResponse>(`/summary/${videoId}`);
+        return response.data.summary;
+      } catch (error) {
+        console.error(`Error fetching summary for video ${videoId}:`, error);
+        
+        // Make sure we return an ApiError
+        if (error && typeof error === 'object' && 'isQuotaError' in error) {
+          throw error as ApiError;
+        } else {
+          throw handleApiError(error);
         }
-      );
-      return response.data.summary;
+      }
     },
     enabled: !!videoId && enabled,
     retry: 1,
     refetchOnWindowFocus: false,
+    // Stale time to reduce API calls
+    staleTime: 1000 * 60 * 30, // 30 minutes
+    // Cache time to keep data in cache even when not used
+    gcTime: 1000 * 60 * 60 // 60 minutes (newer version uses gcTime instead of cacheTime)
   });
 };

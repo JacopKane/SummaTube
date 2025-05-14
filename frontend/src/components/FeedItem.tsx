@@ -1,6 +1,7 @@
 import { format } from 'timeago.js';
 import Image from 'next/image';
 import { useVideoSummary } from '@/hooks/useVideoSummary';
+import { ApiError } from '@/utils/errorHandling';
 
 interface FeedItemProps {
   id: string;
@@ -11,7 +12,14 @@ interface FeedItemProps {
 }
 
 export default function FeedItem({ id, title, thumbnail, publishedAt, videoUrl }: FeedItemProps) {
-  const { data: summary, isLoading: isLoadingSummary, error } = useVideoSummary(id);
+  // Set enabled to false if we know there's a quota issue (can be stored in sessionStorage)
+  const quotaExceeded = typeof window !== 'undefined' ? sessionStorage.getItem('youtube_quota_exceeded') === 'true' : false;
+  const { data: summary, isLoading: isLoadingSummary, error } = useVideoSummary(id, !quotaExceeded);
+
+  // If we get a quota error, mark it for other components
+  if (error && error.isQuotaError && typeof window !== 'undefined') {
+    sessionStorage.setItem('youtube_quota_exceeded', 'true');
+  }
 
   const summaryStatus = isLoadingSummary ? 'loading' : error ? 'error' : 'completed';
   const summaryContent = summaryStatus === 'completed' ? summary : null;
@@ -45,7 +53,26 @@ export default function FeedItem({ id, title, thumbnail, publishedAt, videoUrl }
             <div className="pulse-text w-3/4"></div>
           </div>
         ) : summaryStatus === 'error' ? (
-          <p className="text-sm text-red-500">Failed to generate summary</p>
+          <div>
+            {error?.isQuotaError ? (
+              <div className="text-sm bg-yellow-50 p-2 rounded border border-yellow-200">
+                <p className="text-amber-700">API quota exceeded. Summaries unavailable until quota resets.</p>
+                <a 
+                  href={videoUrl} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:underline text-xs mt-1 inline-block"
+                >
+                  Watch on YouTube →
+                </a>
+              </div>
+            ) : (
+              <p className="text-sm text-red-500">
+                {error?.message?.slice(0, 50) || "Failed to generate summary"}
+                {error?.message && error.message.length > 50 ? '...' : ''}
+              </p>
+            )}
+          </div>
         ) : (
           <p className="text-sm line-clamp-3">{summaryContent}</p>
         )}

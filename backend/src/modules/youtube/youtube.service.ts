@@ -15,6 +15,9 @@ export interface VideoItem {
 @Injectable()
 export class YoutubeService {
   private youtube: youtube_v3.Youtube;
+  private feedCache: Map<string, { data: any, timestamp: number }> = new Map();
+  private captionCache: Map<string, { data: string, timestamp: number }> = new Map();
+  private readonly CACHE_TTL = 3600000; // 1 hour in milliseconds
 
   constructor(private configService: ConfigService) {
     this.youtube = google.youtube({
@@ -24,6 +27,16 @@ export class YoutubeService {
 
   async getUserFeed(accessToken: string): Promise<VideoItem[]> {
     try {
+      // Check if we have a cached response for this user
+      const cachedData = this.feedCache.get(accessToken);
+      const now = Date.now();
+      
+      if (cachedData && (now - cachedData.timestamp < this.CACHE_TTL)) {
+        console.log('Returning cached feed data');
+        return cachedData.data;
+      }
+      
+      console.log('Cache miss for feed, fetching from YouTube API');
       const auth = new google.auth.OAuth2();
       auth.setCredentials({ access_token: accessToken });
 
@@ -43,13 +56,14 @@ export class YoutubeService {
       const videos: VideoItem[] = [];
 
       // For each channel, get the latest videos
-      for (const channelId of channelIds.slice(0, 5)) {
-        // Limit to 5 channels for faster results
+      // Reduce from 5 to 3 channels to save quota
+      for (const channelId of channelIds.slice(0, 3)) {
+        // Limit to 3 channels for quota optimization
         const channelVideos = await this.youtube.search.list({
           auth,
           part: ["snippet"],
           channelId: channelId || "",
-          maxResults: 5,
+          maxResults: 3, // Reduce from 5 to 3 videos per channel
           order: "date",
           type: ["video"],
         });
@@ -70,13 +84,40 @@ export class YoutubeService {
       }
 
       // Sort by publishedAt (newest first)
-      return videos.sort(
+      const sortedVideos = videos.sort(
         (a, b) =>
           new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
       );
+      
+      // Store in cache
+      this.feedCache.set(accessToken, {
+        data: sortedVideos,
+        timestamp: Date.now()
+      });
+      
+      return sortedVideos;
     } catch (error) {
       console.error("Error fetching YouTube feed:", error);
-      throw new UnauthorizedException("Failed to fetch YouTube feed");
+
+      if (this.isQuotaExceededError(error)) {
+        throw new UnauthorizedException(
+          "YouTube API quota has been exceeded. Please try again later (quotas typically reset at midnight Pacific Time)."
+        );
+      } else if (error.response?.status === 403) {
+        throw new UnauthorizedException(
+          "Insufficient permissions to access YouTube feed. Please ensure you have the required YouTube API scopes."
+        );
+      } else if (error.response) {
+        throw new UnauthorizedException(
+          `Failed to fetch YouTube feed: ${
+            error.response.data?.error?.message || error.message
+          }`
+        );
+      } else {
+        throw new UnauthorizedException(
+          `Failed to fetch YouTube feed: ${error.message || "Unknown error"}`
+        );
+      }
     }
   }
 
@@ -85,6 +126,17 @@ export class YoutubeService {
     accessToken: string
   ): Promise<string> {
     try {
+      // Create a cache key that includes the videoId
+      const cacheKey = `${videoId}_${accessToken}`;
+      const cachedData = this.captionCache.get(cacheKey);
+      const now = Date.now();
+      
+      if (cachedData && (now - cachedData.timestamp < this.CACHE_TTL)) {
+        console.log(`Returning cached caption data for video ${videoId}`);
+        return cachedData.data;
+      }
+      
+      console.log(`Cache miss for caption ${videoId}, fetching from YouTube API`);
       const auth = new google.auth.OAuth2();
       auth.setCredentials({ access_token: accessToken });
 
@@ -116,13 +168,52 @@ export class YoutubeService {
 
       // Parse the caption content (simplified)
       if (captionResponse.data) {
-        return captionResponse.data.toString();
+        const captionData = captionResponse.data.toString();
+        
+        // Store in cache
+        const cacheKey = `${videoId}_${accessToken}`;
+        this.captionCache.set(cacheKey, {
+          data: captionData,
+          timestamp: Date.now()
+        });
+        
+        return captionData;
       } else {
         throw new Error("Failed to download caption data");
       }
     } catch (error) {
       console.error("Error fetching transcript:", error);
-      throw new Error("Failed to fetch video transcript");
+
+      // Provide more specific error messages to help with debugging
+      if (this.isQuotaExceededError(error)) {
+        throw new Error(
+          "YouTube API quota has been exceeded. Please try again later (quotas typically reset at midnight Pacific Time)."
+        );
+      } else if (error.response?.status === 403) {
+        throw new Error(
+          "Insufficient permissions to access captions. Please ensure you have the required YouTube API scopes."
+        );
+      } else if (error.response) {
+        throw new Error(
+          `Failed to fetch video transcript: ${
+            error.response.data?.error?.message || error.message
+          }`
+        );
+      } else {
+        throw new Error(
+          `Failed to fetch video transcript: ${
+            error.message || "Unknown error"
+          }`
+        );
+      }
     }
+  }
+
+  // Helper method to determine if an error is due to quota exceedance
+  private isQuotaExceededError(error: any): boolean {
+    return (
+      error?.response?.status === 403 &&
+      error?.errors?.[0]?.reason === "quotaExceeded"
+    );
   }
 }

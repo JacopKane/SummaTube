@@ -15,9 +15,9 @@ const nextConfig = {
   async rewrites() {
     // Use INTERNAL_API_URL for server-side communication (within Docker network)
     // Fall back to NEXT_PUBLIC_API_URL for local development
-    const apiUrl = 
-      process.env.INTERNAL_API_URL || 
-      process.env.NEXT_PUBLIC_API_URL || 
+    const apiUrl =
+      process.env.INTERNAL_API_URL ||
+      process.env.NEXT_PUBLIC_API_URL ||
       "http://localhost:8001/api";
 
     return [

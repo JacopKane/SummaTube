@@ -20,6 +20,8 @@ export class AuthService {
       "https://www.googleapis.com/auth/youtube.readonly",
       "https://www.googleapis.com/auth/userinfo.profile",
       "https://www.googleapis.com/auth/userinfo.email",
+      "https://www.googleapis.com/auth/youtubepartner",
+      "https://www.googleapis.com/auth/youtube.force-ssl",
     ];
 
     return this.oauth2Client.generateAuthUrl({
@@ -46,7 +48,7 @@ export class AuthService {
         return null;
       }
 
-      const data = await response.json();
+      const data: any = await response.json();
 
       // Check if the token is for our app
       if (data.audience !== this.configService.get("YOUTUBE_CLIENT_ID")) {

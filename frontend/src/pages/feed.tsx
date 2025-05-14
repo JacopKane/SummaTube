@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { useQuery } from '@tanstack/react-query';
-import axios from 'axios';
 import FeedItem from '@/components/FeedItem';
+import { ApiError, handleApiError } from '@/utils/errorHandling';
+import api from '@/utils/api';
 
 interface VideoFeedItem {
   id: string;
@@ -28,29 +29,30 @@ export default function Feed() {
     }
   }, [router]);
 
-  const { data: feedItems, isLoading, error } = useQuery({
+  const { data: feedItems, isLoading, error, refetch } = useQuery<VideoFeedItem[], ApiError>({
     queryKey: ['feed'],
     queryFn: async () => {
       try {
-        const token = localStorage.getItem('youtube_token');
-        console.log('Making API request to fetch feed with token:', token?.substring(0, 10) + '...');
+        console.log('Making API request to fetch feed');
         
-        // Use /api for relative path to leverage Next.js rewrites
-        const { data } = await axios.get<VideoFeedItem[]>('/api/youtube/feed', {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        });
+        // Using our API client which automatically adds headers
+        const { data } = await api.get<VideoFeedItem[]>('/youtube/feed');
         
         console.log('Feed data received:', data?.length || 0, 'items');
         return data;
       } catch (error) {
         console.error('Error fetching feed:', error);
-        throw error;
+        
+        // Make sure we always return an ApiError
+        if (error && typeof error === 'object' && 'isQuotaError' in error) {
+          throw error as ApiError;
+        } else {
+          throw handleApiError(error);
+        }
       }
     },
     enabled: authenticated,
-    refetchInterval: 60000, // Refetch every minute
+    refetchInterval: 3600000, // Refetch every hour instead of every minute to reduce API calls
   });
 
   if (!authenticated) {
@@ -63,18 +65,55 @@ export default function Feed() {
 
   if (error) {
     console.error('Feed loading error:', error);
+    
     return (
       <div className="flex flex-col justify-center items-center min-h-screen">
-        <p className="text-xl mb-4">Error loading feed. Please try again later.</p>
-        <button
-          onClick={() => {
-            localStorage.removeItem('youtube_token');
-            router.push('/');
-          }}
-          className="bg-red-600 text-white px-6 py-2 rounded hover:bg-red-700 transition-colors"
-        >
-          Sign in again
-        </button>
+        {error.isQuotaError ? (
+          <>
+            <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-4 max-w-lg">
+              <p className="font-bold">YouTube API Quota Exceeded</p>
+              <p>The application has reached its YouTube API quota limit. This typically resets at midnight Pacific Time.</p>
+            </div>
+            <p className="text-xl mb-4">Try again later or use a different Google account.</p>
+          </>
+        ) : error.isAuthError ? (
+          <>
+            <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4 max-w-lg">
+              <p className="font-bold">Authentication Error</p>
+              <p>Your authentication token is invalid or has expired.</p>
+            </div>
+            <p className="text-xl mb-4">Please sign in again to continue.</p>
+          </>
+        ) : (
+          <>
+            <div className="bg-orange-100 border-l-4 border-orange-500 text-orange-700 p-4 mb-4 max-w-lg">
+              <p className="font-bold">Error {error.status}</p>
+              <p>{error.message || 'An unexpected error occurred'}</p>
+            </div>
+            <p className="text-xl mb-4">Please try again later.</p>
+          </>
+        )}
+        
+        <div className="flex gap-3">
+          {!error.isQuotaError && (
+            <button
+              onClick={() => refetch()}
+              className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 transition-colors"
+            >
+              Try Again
+            </button>
+          )}
+          
+          <button
+            onClick={() => {
+              localStorage.removeItem('youtube_token');
+              router.push('/');
+            }}
+            className="bg-red-600 text-white px-6 py-2 rounded hover:bg-red-700 transition-colors"
+          >
+            Sign in again
+          </button>
+        </div>
       </div>
     );
   }
@@ -91,15 +130,26 @@ export default function Feed() {
         <header className="mb-8">
           <div className="container mx-auto flex justify-between items-center">
             <h1 className="text-3xl font-bold">SummaTube</h1>
-            <button
-              onClick={() => {
-                localStorage.removeItem('youtube_token');
-                router.push('/');
-              }}
-              className="text-sm bg-gray-200 dark:bg-gray-700 px-4 py-2 rounded hover:bg-gray-300 dark:hover:bg-gray-600"
-            >
-              Sign Out
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  refetch();
+                }}
+                className="text-sm bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:bg-blue-300 disabled:cursor-not-allowed"
+                disabled={isLoading}
+              >
+                {isLoading ? 'Loading...' : 'Refresh Feed'}
+              </button>
+              <button
+                onClick={() => {
+                  localStorage.removeItem('youtube_token');
+                  router.push('/');
+                }}
+                className="text-sm bg-gray-200 dark:bg-gray-700 px-4 py-2 rounded hover:bg-gray-300 dark:hover:bg-gray-600"
+              >
+                Sign Out
+              </button>
+            </div>
           </div>
         </header>
 
