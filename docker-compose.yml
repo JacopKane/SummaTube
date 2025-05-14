@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: always
+    ports:
+      - "3001:3001"
+    env_file:
+      - ./backend/.env
+    networks:
+      - summatube-network
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3001/api"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    restart: always
+    ports:
+      - "3000:3000"
+    env_file:
+      - ./frontend/.env
+    networks:
+      - summatube-network
+    depends_on:
+      - backend
+    environment:
+      - NEXT_PUBLIC_API_URL=http://backend:3001/api
+
+networks:
+  summatube-network:
+    driver: bridge
