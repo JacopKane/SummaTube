@@ -45,7 +45,10 @@ export class YoutubeController {
       return await this.youtubeService.getUserFeed(token);
     } catch (error) {
       // Check specifically for quota errors
-      if (error?.response?.status === 403 && error?.errors?.[0]?.reason === "quotaExceeded") {
+      if (
+        error?.response?.status === 403 &&
+        error?.errors?.[0]?.reason === "quotaExceeded"
+      ) {
         throw new UnauthorizedException(
           "YouTube API quota has been exceeded. Please try again later (quotas typically reset at midnight Pacific Time)."
         );

@@ -15,13 +15,15 @@ export const useVideoSummary = (videoId: string, enabled: boolean = true) => {
         if (!videoId) throw new Error("No video ID provided");
 
         // Use our API client which automatically adds the token
-        const response = await api.get<VideoSummaryResponse>(`/summary/${videoId}`);
+        const response = await api.get<VideoSummaryResponse>(
+          `/summary/${videoId}`
+        );
         return response.data.summary;
       } catch (error) {
         console.error(`Error fetching summary for video ${videoId}:`, error);
-        
+
         // Make sure we return an ApiError
-        if (error && typeof error === 'object' && 'isQuotaError' in error) {
+        if (error && typeof error === "object" && "isQuotaError" in error) {
           throw error as ApiError;
         } else {
           throw handleApiError(error);
@@ -34,6 +36,6 @@ export const useVideoSummary = (videoId: string, enabled: boolean = true) => {
     // Stale time to reduce API calls
     staleTime: 1000 * 60 * 30, // 30 minutes
     // Cache time to keep data in cache even when not used
-    gcTime: 1000 * 60 * 60 // 60 minutes (newer version uses gcTime instead of cacheTime)
+    gcTime: 1000 * 60 * 60, // 60 minutes (newer version uses gcTime instead of cacheTime)
   });
 };

@@ -15,8 +15,9 @@ export interface VideoItem {
 @Injectable()
 export class YoutubeService {
   private youtube: youtube_v3.Youtube;
-  private feedCache: Map<string, { data: any, timestamp: number }> = new Map();
-  private captionCache: Map<string, { data: string, timestamp: number }> = new Map();
+  private feedCache: Map<string, { data: any; timestamp: number }> = new Map();
+  private captionCache: Map<string, { data: string; timestamp: number }> =
+    new Map();
   private readonly CACHE_TTL = 3600000; // 1 hour in milliseconds
 
   constructor(private configService: ConfigService) {
@@ -30,13 +31,13 @@ export class YoutubeService {
       // Check if we have a cached response for this user
       const cachedData = this.feedCache.get(accessToken);
       const now = Date.now();
-      
-      if (cachedData && (now - cachedData.timestamp < this.CACHE_TTL)) {
-        console.log('Returning cached feed data');
+
+      if (cachedData && now - cachedData.timestamp < this.CACHE_TTL) {
+        console.log("Returning cached feed data");
         return cachedData.data;
       }
-      
-      console.log('Cache miss for feed, fetching from YouTube API');
+
+      console.log("Cache miss for feed, fetching from YouTube API");
       const auth = new google.auth.OAuth2();
       auth.setCredentials({ access_token: accessToken });
 
@@ -88,13 +89,13 @@ export class YoutubeService {
         (a, b) =>
           new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
       );
-      
+
       // Store in cache
       this.feedCache.set(accessToken, {
         data: sortedVideos,
-        timestamp: Date.now()
+        timestamp: Date.now(),
       });
-      
+
       return sortedVideos;
     } catch (error) {
       console.error("Error fetching YouTube feed:", error);
@@ -130,13 +131,15 @@ export class YoutubeService {
       const cacheKey = `${videoId}_${accessToken}`;
       const cachedData = this.captionCache.get(cacheKey);
       const now = Date.now();
-      
-      if (cachedData && (now - cachedData.timestamp < this.CACHE_TTL)) {
+
+      if (cachedData && now - cachedData.timestamp < this.CACHE_TTL) {
         console.log(`Returning cached caption data for video ${videoId}`);
         return cachedData.data;
       }
-      
-      console.log(`Cache miss for caption ${videoId}, fetching from YouTube API`);
+
+      console.log(
+        `Cache miss for caption ${videoId}, fetching from YouTube API`
+      );
       const auth = new google.auth.OAuth2();
       auth.setCredentials({ access_token: accessToken });
 
@@ -169,14 +172,14 @@ export class YoutubeService {
       // Parse the caption content (simplified)
       if (captionResponse.data) {
         const captionData = captionResponse.data.toString();
-        
+
         // Store in cache
         const cacheKey = `${videoId}_${accessToken}`;
         this.captionCache.set(cacheKey, {
           data: captionData,
-          timestamp: Date.now()
+          timestamp: Date.now(),
         });
-        
+
         return captionData;
       } else {
         throw new Error("Failed to download caption data");
