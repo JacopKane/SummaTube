@@ -15,7 +15,7 @@ export class AuthService {
     );
   }
 
-  generateAuthUrl(): string {
+  generateAuthUrl(reauth: boolean = false): string {
     const scopes = [
       "https://www.googleapis.com/auth/youtube.readonly",
       "https://www.googleapis.com/auth/userinfo.profile",
@@ -28,6 +28,7 @@ export class AuthService {
       access_type: "offline",
       scope: scopes,
       include_granted_scopes: true,
+      prompt: reauth ? "consent" : undefined,
     });
   }
 

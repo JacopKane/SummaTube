@@ -193,9 +193,56 @@ export class YoutubeService {
           "YouTube API quota has been exceeded. Please try again later (quotas typically reset at midnight Pacific Time)."
         );
       } else if (error.response?.status === 403) {
-        throw new Error(
-          "Insufficient permissions to access captions. Please ensure you have the required YouTube API scopes."
-        );
+        const errorMessage = error.response?.data?.error?.message || "";
+        const errorDetail = error.errors?.[0]?.message || "";
+
+        // Check if this is truly a permissions issue or if captions are simply not available
+        if (
+          errorMessage.includes("not sufficient") ||
+          errorDetail.includes("not sufficient") ||
+          errorDetail.includes("not properly authorized")
+        ) {
+          // This is a permissions issue
+          throw new Error(
+            "Insufficient permissions to access captions. Please ensure you have the required YouTube API scopes."
+          );
+        } else if (
+          errorMessage.includes("not have enabled third-party contributions") ||
+          errorDetail.includes("not have enabled third-party contributions")
+        ) {
+          // This is a video where the owner has disabled third-party access to captions
+          // Try to get video description as a fallback
+          try {
+            console.log(
+              `Attempting to use video description as fallback for ${videoId}`
+            );
+            const description = await this.getVideoDescription(
+              videoId,
+              accessToken
+            );
+
+            // Cache the description as if it were captions
+            const cacheKey = `${videoId}_${accessToken}`;
+            this.captionCache.set(cacheKey, {
+              data: description,
+              timestamp: Date.now(),
+            });
+
+            return description;
+          } catch (descError) {
+            console.error("Fallback to description failed:", descError);
+            throw new Error(
+              "Captions for this video are not publicly accessible. The video owner has not enabled third-party access to captions."
+            );
+          }
+        } else {
+          // Generic 403 error
+          throw new Error(
+            `Failed to fetch video transcript: Access denied. ${
+              errorMessage || errorDetail || "Unknown reason"
+            }`
+          );
+        }
       } else if (error.response) {
         throw new Error(
           `Failed to fetch video transcript: ${
@@ -218,5 +265,61 @@ export class YoutubeService {
       error?.response?.status === 403 &&
       error?.errors?.[0]?.reason === "quotaExceeded"
     );
+  }
+
+  /**
+   * Fetch video description when transcripts/captions are unavailable
+   * This serves as a fallback when captions cannot be accessed
+   */
+  async getVideoDescription(
+    videoId: string,
+    accessToken: string
+  ): Promise<string> {
+    try {
+      const auth = new google.auth.OAuth2();
+      auth.setCredentials({ access_token: accessToken });
+
+      // Get video details including description
+      const response = await this.youtube.videos.list({
+        auth,
+        part: ["snippet", "contentDetails"],
+        id: [videoId],
+      });
+
+      if (!response.data.items || response.data.items.length === 0) {
+        throw new Error("Video not found");
+      }
+
+      const video = response.data.items[0];
+      const description = video.snippet?.description || "";
+      const title = video.snippet?.title || "";
+      const channelTitle = video.snippet?.channelTitle || "";
+      const publishedAt = video.snippet?.publishedAt || "";
+      const duration = video.contentDetails?.duration || "";
+
+      // Format the content to provide context for summarization
+      const formattedContent = `
+Title: ${title}
+Channel: ${channelTitle}
+Published: ${publishedAt}
+Duration: ${duration}
+Description:
+${description}
+`.trim();
+
+      return formattedContent;
+    } catch (error) {
+      console.error("Error fetching video description:", error);
+
+      if (this.isQuotaExceededError(error)) {
+        throw new Error(
+          "YouTube API quota has been exceeded. Please try again later."
+        );
+      }
+
+      throw new Error(
+        `Failed to fetch video description: ${error.message || "Unknown error"}`
+      );
+    }
   }
 }

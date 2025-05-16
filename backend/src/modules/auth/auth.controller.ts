@@ -12,8 +12,10 @@ export class AuthController {
   ) {}
 
   @Get("youtube")
-  async youtubeAuth(@Res() res: Response) {
-    const authUrl = this.authService.generateAuthUrl();
+  async youtubeAuth(@Req() req: Request, @Res() res: Response) {
+    // Check if this is a reauthorization request
+    const reauth = req.query.reauth === "true";
+    const authUrl = this.authService.generateAuthUrl(reauth);
     return res.redirect(authUrl);
   }
 
@@ -30,9 +32,12 @@ export class AuthController {
     try {
       const tokens = await this.authService.getTokens(code);
 
-      // Redirect to frontend with the token
+      // When we get new tokens, add a flag to clear any permission errors
+      // Redirect to frontend with the token and clear permission error flag
       return res.redirect(
-        `${this.configService.get("FRONTEND_URL")}?token=${tokens.access_token}`
+        `${this.configService.get("FRONTEND_URL")}?token=${
+          tokens.access_token
+        }&clearPermissionError=true`
       );
     } catch (error) {
       console.error("YouTube auth callback error:", error);

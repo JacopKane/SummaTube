@@ -8,7 +8,7 @@ export default function AuthCallback() {
   useEffect(() => {
     if (!router.isReady) return;
 
-    const { token, error } = router.query;
+    const { token, error, clearPermissionError } = router.query;
     
     if (error) {
       console.error('Authentication error:', error);
@@ -19,6 +19,18 @@ export default function AuthCallback() {
     if (token) {
       // Store the token in localStorage
       localStorage.setItem('youtube_token', token as string);
+      
+      // Clear any permission error if needed
+      if (clearPermissionError === 'true') {
+        sessionStorage.removeItem('youtube_permission_error');
+        // Dispatch custom event to notify other components
+        window.dispatchEvent(
+          new CustomEvent('youtube_permission_status', {
+            detail: { permissionError: false }
+          })
+        );
+        console.log('Permission error cleared after successful reauthorization');
+      }
       
       // Redirect to the feed page
       router.push('/feed');

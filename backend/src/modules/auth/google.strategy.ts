@@ -14,6 +14,8 @@ export class GoogleStrategy extends PassportStrategy(Strategy, "google") {
         "https://www.googleapis.com/auth/youtube.readonly",
         "https://www.googleapis.com/auth/userinfo.profile",
         "https://www.googleapis.com/auth/userinfo.email",
+        "https://www.googleapis.com/auth/youtubepartner",
+        "https://www.googleapis.com/auth/youtube.force-ssl",
       ],
       // Don't include passReqToCallback for default behavior
     } as StrategyOptions);

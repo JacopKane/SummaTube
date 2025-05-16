@@ -31,6 +31,7 @@ api.interceptors.response.use(
     if (
       apiError.isAuthError &&
       !apiError.isQuotaError &&
+      !apiError.isPermissionError &&
       typeof window !== "undefined"
     ) {
       console.log("Authentication error detected in API interceptor");

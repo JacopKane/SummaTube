@@ -2,14 +2,15 @@ import '@/styles/globals.css';
 import type { AppProps } from 'next/app';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import QuotaErrorBanner from '@/components/QuotaErrorBanner';
+import PermissionErrorBanner from '@/components/PermissionErrorBanner';
 
 // Configure React Query with defaults to handle API quota issues
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       retry: (failureCount, error: any) => {
-        // Don't retry if it's a quota error
-        if (error?.isQuotaError) return false;
+        // Don't retry if it's a quota or permission error
+        if (error?.isQuotaError || error?.isPermissionError) return false;
         return failureCount < 2;
       },
       staleTime: 1000 * 60 * 5, // 5 minutes - reduce API calls
@@ -22,6 +23,7 @@ export default function App({ Component, pageProps }: AppProps) {
     <QueryClientProvider client={queryClient}>
       <Component {...pageProps} />
       <QuotaErrorBanner />
+      <PermissionErrorBanner />
     </QueryClientProvider>
   );
 }

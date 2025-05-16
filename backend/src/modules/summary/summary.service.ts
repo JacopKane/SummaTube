@@ -31,18 +31,28 @@ export class SummaryService {
     accessToken: string
   ): Promise<string> {
     try {
-      // Fetch the video transcript
-      const transcript = await this.youtubeService.getVideoTranscript(
+      // Fetch the video transcript or fallback to description
+      const content = await this.youtubeService.getVideoTranscript(
         videoId,
         accessToken
       );
 
-      if (!transcript) {
-        throw new Error("No transcript available for this video");
+      if (!content) {
+        throw new Error("No content available for this video");
       }
 
-      // Generate summary through iterative summarization
-      return this.iterativeSummarization(transcript);
+      // Check if this is likely a transcript or a description (from fallback)
+      const isDescription =
+        content.includes("Title:") &&
+        content.includes("Channel:") &&
+        content.includes("Published:") &&
+        content.includes("Description:");
+
+      // Generate summary, with modified prompt if it's a description
+      return this.iterativeSummarization(
+        content,
+        isDescription ? "video description" : "transcript"
+      );
     } catch (error) {
       this.logger.error(
         `Error generating summary for video ${videoId}:`,
@@ -52,22 +62,22 @@ export class SummaryService {
     }
   }
 
-  private async iterativeSummarization(transcript: string): Promise<string> {
-    // If the transcript is short enough, summarize it directly
-    if (transcript.length < this.maxTokensPerSummarization * 4) {
+  private async iterativeSummarization(
+    content: string,
+    contentType: string = "transcript"
+  ): Promise<string> {
+    // If the content is short enough, summarize it directly
+    if (content.length < this.maxTokensPerSummarization * 4) {
       // Rough estimation
-      return this.summarizeContent(transcript);
+      return this.summarizeContent(content, contentType);
     }
 
-    // Split the transcript into chunks and summarize each chunk
-    const chunks = this.splitText(
-      transcript,
-      this.maxTokensPerSummarization * 4
-    );
+    // Split the content into chunks and summarize each chunk
+    const chunks = this.splitText(content, this.maxTokensPerSummarization * 4);
     let partialSummaries: string[] = [];
 
     for (const chunk of chunks) {
-      const summary = await this.summarizeContent(chunk);
+      const summary = await this.summarizeContent(chunk, contentType);
       partialSummaries.push(summary);
     }
 
@@ -76,7 +86,7 @@ export class SummaryService {
       const combinedText = partialSummaries.join("\n\n");
 
       if (combinedText.length < this.maxTokensPerSummarization * 4) {
-        return this.summarizeContent(combinedText);
+        return this.summarizeContent(combinedText, contentType);
       }
 
       // Process the partial summaries in batches
@@ -86,7 +96,10 @@ export class SummaryService {
       for (let i = 0; i < partialSummaries.length; i += batchSize) {
         const batch = partialSummaries.slice(i, i + batchSize);
         const batchText = batch.join("\n\n");
-        const batchSummary = await this.summarizeContent(batchText);
+        const batchSummary = await this.summarizeContent(
+          batchText,
+          contentType
+        );
         newPartialSummaries.push(batchSummary);
       }
 
@@ -96,19 +109,33 @@ export class SummaryService {
     return partialSummaries[0];
   }
 
-  private async summarizeContent(transcriptContent: string): Promise<string> {
+  private async summarizeContent(
+    content: string,
+    contentType: string = "transcript"
+  ): Promise<string> {
     try {
+      // Adjust the system prompt based on the content type
+      const systemPrompt =
+        contentType === "transcript"
+          ? "You are an expert at summarizing video transcripts. Extract key points and main ideas concisely."
+          : "You are an expert at extracting key information from video descriptions. Create a concise summary of what the video is about.";
+
+      // Adjust the user prompt based on the content type
+      const userPrompt =
+        contentType === "transcript"
+          ? `Summarize the following transcript in a clear, concise manner. Focus on the main points and key takeaways:\n\n${content}`
+          : `Extract the key information from this video description and summarize what the video is likely about:\n\n${content}`;
+
       const completion = await this.openai.chat.completions.create({
         model: this.model,
         messages: [
           {
             role: "system",
-            content:
-              "You are an expert at summarizing video transcripts. Extract key points and main ideas concisely.",
+            content: systemPrompt,
           },
           {
             role: "user",
-            content: `Summarize the following transcript in a clear, concise manner. Focus on the main points and key takeaways:\n\n${transcriptContent}`,
+            content: userPrompt,
           },
         ],
         response_format: {

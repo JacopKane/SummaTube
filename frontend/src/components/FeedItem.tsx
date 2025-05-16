@@ -2,6 +2,7 @@ import { format } from 'timeago.js';
 import Image from 'next/image';
 import { useVideoSummary } from '@/hooks/useVideoSummary';
 import { ApiError } from '@/utils/errorHandling';
+import { decodeHtmlEntities } from '@/utils/htmlEntities';
 
 interface FeedItemProps {
   id: string;
@@ -41,7 +42,7 @@ export default function FeedItem({ id, title, thumbnail, publishedAt, videoUrl }
         />
       </div>
       <div className="p-4">
-        <h3 className="font-bold text-lg mb-2 line-clamp-2">{title}</h3>
+        <h3 className="font-bold text-lg mb-2 line-clamp-2">{decodeHtmlEntities(title)}</h3>
         <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
           {format(publishedAt)}
         </p>
@@ -57,6 +58,32 @@ export default function FeedItem({ id, title, thumbnail, publishedAt, videoUrl }
             {error?.isQuotaError ? (
               <div className="text-sm bg-yellow-50 p-2 rounded border border-yellow-200">
                 <p className="text-amber-700">API quota exceeded. Summaries unavailable until quota resets.</p>
+                <a 
+                  href={videoUrl} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:underline text-xs mt-1 inline-block"
+                >
+                  Watch on YouTube →
+                </a>
+              </div>
+            ) : error?.isPermissionError ? (
+              <div className="text-sm bg-red-50 p-2 rounded border border-red-200">
+                <p className="text-red-700">Insufficient permissions to access captions.</p>
+                <button 
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    window.location.href = '/api/auth/youtube?reauth=true';
+                  }}
+                  className="text-blue-600 hover:underline text-xs mt-1 inline-block mr-2"
+                >
+                  Reauthorize Access
+                </button>
+              </div>
+            ) : error?.isCaptionsNotAvailable ? (
+              <div className="text-sm bg-gray-50 p-2 rounded border border-gray-200">
+                <p className="text-gray-700">Captions not publicly available for this video.</p>
                 <a 
                   href={videoUrl} 
                   target="_blank" 

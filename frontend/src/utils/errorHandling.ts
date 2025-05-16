@@ -5,6 +5,8 @@ export interface ApiError {
   message: string;
   isAuthError: boolean;
   isQuotaError: boolean;
+  isPermissionError: boolean;
+  isCaptionsNotAvailable?: boolean;
 }
 
 export function handleApiError(error: unknown): ApiError {
@@ -14,6 +16,8 @@ export function handleApiError(error: unknown): ApiError {
     message: "An unexpected error occurred",
     isAuthError: false,
     isQuotaError: false,
+    isPermissionError: false,
+    isCaptionsNotAvailable: false,
   };
 
   // If not an axios error, return default
@@ -43,10 +47,37 @@ export function handleApiError(error: unknown): ApiError {
     (message.toLowerCase().includes("quota") ||
       responseData?.error?.toLowerCase().includes("quota"));
 
+  // Check if it's a permission error
+  const isPermissionError =
+    status === 403 &&
+    (message.toLowerCase().includes("permission") ||
+      message.toLowerCase().includes("insufficient permissions") ||
+      message.toLowerCase().includes("not sufficient") ||
+      responseData?.error?.toLowerCase().includes("permission"));
+
+  // Check if it's a case of captions not being available (rather than a permissions issue)
+  const isCaptionsNotAvailable =
+    responseData?.isCaptionsNotAvailable === true ||
+    message.toLowerCase().includes("not publicly accessible") ||
+    message.toLowerCase().includes("not have enabled third-party");
+
+  // If it's a permission error (and not just unavailable captions), store it in sessionStorage
+  if (isPermissionError && !isCaptionsNotAvailable) {
+    sessionStorage.setItem("youtube_permission_error", "true");
+    // Dispatch custom event to notify other components
+    window.dispatchEvent(
+      new CustomEvent("youtube_permission_status", {
+        detail: { permissionError: true },
+      })
+    );
+  }
+
   return {
     status,
     message,
     isAuthError,
     isQuotaError,
+    isPermissionError,
+    isCaptionsNotAvailable,
   };
 }

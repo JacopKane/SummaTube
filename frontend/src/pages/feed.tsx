@@ -44,7 +44,7 @@ export default function Feed() {
         console.error('Error fetching feed:', error);
         
         // Make sure we always return an ApiError
-        if (error && typeof error === 'object' && 'isQuotaError' in error) {
+        if (error && typeof error === 'object' && ('isQuotaError' in error || 'isPermissionError' in error)) {
           throw error as ApiError;
         } else {
           throw handleApiError(error);
@@ -75,6 +75,20 @@ export default function Feed() {
               <p>The application has reached its YouTube API quota limit. This typically resets at midnight Pacific Time.</p>
             </div>
             <p className="text-xl mb-4">Try again later or use a different Google account.</p>
+          </>
+        ) : error.isPermissionError ? (
+          <>
+            <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4 max-w-lg">
+              <p className="font-bold">YouTube API Permission Error</p>
+              <p>Your account doesn't have the necessary permissions to access some YouTube features.</p>
+            </div>
+            <p className="text-xl mb-4">Please reauthorize with additional permissions to continue.</p>
+            <button 
+              onClick={() => window.location.href = '/api/auth/youtube?reauth=true'}
+              className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
+            >
+              Reauthorize YouTube Access
+            </button>
           </>
         ) : error.isAuthError ? (
           <>

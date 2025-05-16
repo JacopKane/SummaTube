@@ -23,7 +23,11 @@ export const useVideoSummary = (videoId: string, enabled: boolean = true) => {
         console.error(`Error fetching summary for video ${videoId}:`, error);
 
         // Make sure we return an ApiError
-        if (error && typeof error === "object" && "isQuotaError" in error) {
+        if (
+          error &&
+          typeof error === "object" &&
+          ("isQuotaError" in error || "isPermissionError" in error)
+        ) {
           throw error as ApiError;
         } else {
           throw handleApiError(error);
