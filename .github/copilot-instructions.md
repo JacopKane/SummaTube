@@ -2,25 +2,25 @@
 
 ## Project Overview
 
-SummaTube is a YouTube video summarization application that displays the user's YouTube feed with AI-generated summaries of video content. The project consists of:
-
-- NestJS backend API server
-- NextJS frontend application
-- Full Docker containerization for development and production
+SummaTube is a YouTube video summarization application that displays users' YouTube feed with AI-generated summaries of video content. The application uses intelligent caching and quota management to provide reliable service while respecting API limits.
 
 ## Tech Stack
 
-- **Backend**: NestJS, TypeORM, PostgreSQL, Google APIs (YouTube Data API), OpenAI API
+- **Backend**: NestJS, Google APIs (YouTube Data API), OpenAI API
 - **Frontend**: NextJS, React, TailwindCSS, React Query
 - **Infrastructure**: Docker, Docker Compose
 
 ## Key Features
 
-- YouTube OAuth authentication
-- Real-time YouTube feed display
+- YouTube OAuth authentication with proper scope handling
+- Real-time YouTube feed display with smart caching
 - AI-powered video transcript summarization using OpenAI
-- Smart caching system to minimize YouTube API quota usage
-- Quota management to track and warn about approaching API limits
+- Intelligent API quota management with warning systems
+- Multi-level fallback systems for transcript retrieval:
+  - YouTube Data API captions
+  - Alternative caption access methods
+  - TimedText API fallbacks
+  - Video description fallback
 - User-configurable cache settings with import/export functionality
 - Responsive UI with loading states and lazy loading
 
@@ -33,8 +33,6 @@ SummaTube is a YouTube video summarization application that displays the user's 
 - `dev.sh`: Development environment startup script
 
 ## Environment Variables
-
-The project requires several environment variables to function:
 
 ### Backend (.env)
 
@@ -61,11 +59,41 @@ The project requires several environment variables to function:
 
 ## Important Design Patterns
 
-- Smart caching system to minimize API calls
-- Rate limiting and request throttling for API optimization
-- Component-based UI architecture
-- Service-based backend architecture
-- RESTful API design with DTOs for data transfer
+### API Optimization System
+
+- **Smart Caching**: The application implements tiered caching with configurable TTLs:
+
+  - Feed data caches for 24 hours by default
+  - Summaries cache for 7 days by default
+  - Both in-memory and localStorage caching systems
+  - Cache expiration detection and automatic cleanup
+
+- **Quota Management**:
+
+  - Frontend tracks API usage in localStorage
+  - Warns users when approaching YouTube API limits
+  - Falls back to cached data when quota is exceeded
+  - Backend provides detailed quota error handling
+
+- **API Request Throttling**:
+
+  - Implements `apiThrottler` to stagger requests
+  - Prevents bursts of API requests
+  - Maintains a priority queue of requests
+  - Enforces minimum delay between requests
+
+- **Fault Tolerance**:
+  - Multiple fallback mechanisms for transcript retrieval
+  - Graceful error handling with user-friendly messages
+  - Permission error detection and reauthorization flow
+  - Expired cache data used as fallback during API errors
+
+### Code Architecture
+
+- Component-based UI architecture with React
+- Service-based backend architecture with NestJS
+- API endpoints follow RESTful design with proper DTOs
+- Error handling with detailed typing and contextual messages
 
 ## Code Conventions
 
@@ -73,4 +101,19 @@ The project requires several environment variables to function:
 - React functional components with hooks
 - NestJS dependency injection for backend services
 - API endpoints prefixed with /api
-- OAuth2 for authentication
+- OAuth2 for authentication with proper scope handling
+
+## Advanced Features
+
+- **Progressive Summarization**: Handles long transcripts by:
+
+  - Breaking content into manageable chunks
+  - Summarizing each chunk separately
+  - Recursively summarizing the combined results
+  - Handling batches optimally for OpenAI token limits
+
+- **Error Recovery**:
+  - Cache items survive client-side errors
+  - Server maintains disk cache as additional fallback
+  - Session storage tracks quota status across page loads
+  - Permission errors prompt reauthorization with proper scopes
