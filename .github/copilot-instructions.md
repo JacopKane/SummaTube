@@ -117,3 +117,33 @@ SummaTube is a YouTube video summarization application that displays users' YouT
   - Server maintains disk cache as additional fallback
   - Session storage tracks quota status across page loads
   - Permission errors prompt reauthorization with proper scopes
+
+## Development Guidelines
+
+- **Documentation Management**:
+
+  - Use the root README.md as the primary documentation file
+  - Check root folder for markdown files besides README.md, as these contain up-to-date API or similar documentation
+  - Read all markdown files in the root directory carefully before answering questions
+  - Always check root README.md before answering any questions
+  - Update root README.md after implementing changes if they affect information mentioned there
+  - Always update .github/copilot-instructions.md after any significant changes with detailed notes about what changed and how the system structure works now
+  - Only create separate markdown files for specific modules/services when necessary
+  - Always link any additional documentation files in the root README.md
+  - Keep documentation DRY (Don't Repeat Yourself) by centralizing common information
+
+- **Environment Configuration**:
+
+  - Always check for .env files in all project directories before making changes
+  - Verify both root-level and submodule-level environment variables
+  - Ensure configuration changes are consistent across related .env files
+  - Use .env.example files as templates for required variables
+
+- **Docker-based Workflow**:
+  - Check for docker-compose.yml and docker-compose.dev.yml before executing commands
+  - Prefer running commands inside Docker containers rather than locally
+  - Use `docker-compose exec` for installing packages and running scripts
+  - Check container logs when debugging issues
+  - Use the dev.sh script for development environment setup
+  - Use docker compose in background mode whenever possible and makes sense
+  - When multiple commands need to be run regardless of their individual responses, chain them in a single command and debug sequentially if issues occur
