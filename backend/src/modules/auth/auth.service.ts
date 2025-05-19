@@ -20,15 +20,22 @@ export class AuthService {
       "https://www.googleapis.com/auth/youtube.readonly",
       "https://www.googleapis.com/auth/userinfo.profile",
       "https://www.googleapis.com/auth/userinfo.email",
-      "https://www.googleapis.com/auth/youtubepartner",
       "https://www.googleapis.com/auth/youtube.force-ssl",
+      "https://www.googleapis.com/auth/youtube", // Full access to YouTube features
+      "https://www.googleapis.com/auth/youtubepartner", // Partner access for captions
+      "https://www.googleapis.com/auth/youtubepartner-channel-audit", // Additional partner access
     ];
 
+    // When reauthorizing, we always want to force consent screen and include granted scopes
+    // This ensures the user can grant any missing permissions
     return this.oauth2Client.generateAuthUrl({
       access_type: "offline",
       scope: scopes,
       include_granted_scopes: true,
+      // Force consent for reauthorization to ensure user sees all requested scopes
       prompt: reauth ? "consent" : undefined,
+      // Enable granular Google Account permissions
+      enable_granular_consent: true,
     });
   }
 
@@ -61,6 +68,39 @@ export class AuthService {
     } catch (error) {
       console.error("Token validation error:", error);
       return null;
+    }
+  }
+
+  /**
+   * Check if a token has the necessary scopes for accessing captions
+   * This can help identify when reauthorization is needed
+   */
+  async hasCaptionsAccessScope(token: string): Promise<boolean> {
+    try {
+      // Validate token and check scopes
+      const tokenInfo = await this.validateToken(token);
+
+      if (!tokenInfo || !tokenInfo.scope) {
+        return false;
+      }
+
+      const scopes = tokenInfo.scope.split(" ");
+
+      // These are the scopes that can potentially provide captions access
+      const captionScopes = [
+        "https://www.googleapis.com/auth/youtube",
+        "https://www.googleapis.com/auth/youtube.force-ssl",
+        "https://www.googleapis.com/auth/youtubepartner",
+        "https://www.googleapis.com/auth/youtubepartner-channel-audit",
+      ];
+
+      // Check if token has any of the required scopes
+      return captionScopes.some((requiredScope) =>
+        scopes.includes(requiredScope)
+      );
+    } catch (error) {
+      console.error("Error checking caption scopes:", error);
+      return false;
     }
   }
 }

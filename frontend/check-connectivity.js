@@ -25,10 +25,3 @@ request.on("error", (err) => {
 });
 
 request.end();
-
-request.on("error", (err) => {
-  console.error("Frontend healthcheck error:", err);
-  process.exit(1);
-});
-
-request.end();

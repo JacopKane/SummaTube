@@ -32,6 +32,14 @@ export default function AuthCallback() {
         console.log('Permission error cleared after successful reauthorization');
       }
       
+      // Always clear any token errors when a new token is received
+      sessionStorage.removeItem('youtube_token_error');
+      window.dispatchEvent(
+        new CustomEvent('youtube_token_status', {
+          detail: { tokenError: false }
+        })
+      );
+      
       // Redirect to the feed page
       router.push('/feed');
     } else {

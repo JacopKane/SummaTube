@@ -33,8 +33,9 @@ export default function PermissionErrorBanner() {
 
   const handleReauthorize = async () => {
     try {
-      // Make API call to get authentication URL
-      window.location.href = '/api/auth/youtube?reauth=true';
+      // Redirect to YouTube auth with reauth=true to ensure all scopes are requested
+      // This forces the consent screen to appear again with all required permissions
+      window.location.href = '/api/auth/youtube?reauth=true&prompt=consent';
     } catch (error) {
       console.error('Failed to initiate reauthorization:', error);
     }
@@ -53,8 +54,9 @@ export default function PermissionErrorBanner() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
               </span>
-              <p className="ml-3 font-medium text-white truncate">
-                <span>Insufficient YouTube API permissions. Unable to access captions for some videos.</span>
+              <p className="ml-3 font-medium text-white">
+                <span className="block">Insufficient YouTube API permissions to access captions</span>
+                <span className="text-sm">We need expanded YouTube permissions to read video captions and subtitle data</span>
               </p>
             </div>
             <div className="order-3 mt-2 flex-shrink-0 w-full sm:order-2 sm:mt-0 sm:w-auto">
@@ -62,7 +64,7 @@ export default function PermissionErrorBanner() {
                 onClick={handleReauthorize}
                 className="flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-red-600 bg-white hover:bg-red-50"
               >
-                Reauthorize Access
+                Grant Caption Access Permissions
               </button>
             </div>
             <div className="order-2 flex-shrink-0 sm:order-3 sm:ml-2">

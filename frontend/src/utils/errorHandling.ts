@@ -7,6 +7,7 @@ export interface ApiError {
   isQuotaError: boolean;
   isPermissionError: boolean;
   isCaptionsNotAvailable?: boolean;
+  isTokenError?: boolean;
 }
 
 export function handleApiError(error: unknown): ApiError {
@@ -18,6 +19,7 @@ export function handleApiError(error: unknown): ApiError {
     isQuotaError: false,
     isPermissionError: false,
     isCaptionsNotAvailable: false,
+    isTokenError: false,
   };
 
   // If not an axios error, return default
@@ -59,7 +61,17 @@ export function handleApiError(error: unknown): ApiError {
   const isCaptionsNotAvailable =
     responseData?.isCaptionsNotAvailable === true ||
     message.toLowerCase().includes("not publicly accessible") ||
-    message.toLowerCase().includes("not have enabled third-party");
+    message.toLowerCase().includes("not have enabled third-party") ||
+    message.toLowerCase().includes("no captions available") ||
+    message.toLowerCase().includes("no captions found") ||
+    message.toLowerCase().includes("captions are not available");
+
+  // Check if it's a token validation error
+  const isTokenError =
+    status === 401 &&
+    (message.toLowerCase().includes("invalid token") ||
+      message.toLowerCase().includes("token validation failed") ||
+      responseData?.error === "invalid_token");
 
   // If it's a permission error (and not just unavailable captions), store it in sessionStorage
   if (isPermissionError && !isCaptionsNotAvailable) {
@@ -72,6 +84,17 @@ export function handleApiError(error: unknown): ApiError {
     );
   }
 
+  // If it's a token error, store it in sessionStorage
+  if (isTokenError) {
+    sessionStorage.setItem("youtube_token_error", "true");
+    // Dispatch custom event to notify other components
+    window.dispatchEvent(
+      new CustomEvent("youtube_token_status", {
+        detail: { tokenError: true },
+      })
+    );
+  }
+
   return {
     status,
     message,
@@ -79,5 +102,6 @@ export function handleApiError(error: unknown): ApiError {
     isQuotaError,
     isPermissionError,
     isCaptionsNotAvailable,
+    isTokenError,
   };
 }

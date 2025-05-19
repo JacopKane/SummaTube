@@ -32,6 +32,19 @@ export class SummaryController {
     }
 
     try {
+      // Check if token has the necessary scopes for caption access
+      const hasCaptionsScope = await this.authService.hasCaptionsAccessScope(
+        token
+      );
+
+      if (!hasCaptionsScope) {
+        console.warn(
+          "Token lacks sufficient caption access scopes, but will try anyway with fallbacks"
+        );
+        // We'll continue and try to use fallback mechanisms rather than failing immediately
+        // This way, even if we lack perfect permissions, we'll try the fallbacks
+      }
+
       const summary = await this.summaryService.generateVideoSummary(
         videoId,
         token
@@ -39,18 +52,35 @@ export class SummaryController {
       return { videoId, summary };
     } catch (error) {
       // Handle different types of errors differently
-      if (error.message && error.message.includes("Insufficient permissions")) {
+      if (
+        error.isPermissionError ||
+        (error.message && error.message.includes("Insufficient permissions"))
+      ) {
+        console.error("Permission error accessing captions:", error.message);
         throw new UnauthorizedException({
-          message: "Insufficient YouTube API permissions to access captions",
+          message:
+            "Insufficient YouTube API permissions to access captions. Please reauthorize your account.",
           isPermissionError: true,
         });
       } else if (
         error.message &&
-        error.message.includes("not publicly accessible")
+        (error.message.includes("not publicly accessible") ||
+          error.message.includes("No captions available") ||
+          error.message.includes("All caption approaches failed"))
       ) {
-        // This is not a permissions issue, just a video with closed captions
+        // This is not a permissions issue, just a video with unavailable captions
+        console.error("Captions not available error:", error.message);
         throw new UnauthorizedException({
-          message: "This video's captions are not publicly accessible",
+          message:
+            "This video's captions are not available or not publicly accessible",
+          isPermissionError: false,
+          isCaptionsNotAvailable: true,
+        });
+      } else if (error.message && error.message.includes("No captions found")) {
+        // No captions found for this video
+        console.error("No captions found:", error.message);
+        throw new UnauthorizedException({
+          message: "No captions found for this video",
           isPermissionError: false,
           isCaptionsNotAvailable: true,
         });
