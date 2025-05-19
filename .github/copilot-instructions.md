@@ -4,6 +4,12 @@
 
 SummaTube is a YouTube video summarization application that displays users' YouTube feed with AI-generated summaries of video content. The application uses intelligent caching and quota management to provide reliable service while respecting API limits.
 
+# Important instructions
+
+- Before answering say this out loud: "I'll update .github/copilot-instructions.md after implementing changes with detailed notes about what changed and how the system structure works now briefly"
+- Before answering say this out loud: "I'll update all relevant README.md files after implementing changes update with changes the legacy README but don't go into any extra detail"
+- Before answering say this out loud: "I'll update deployment files if any relevant changes are made"
+
 ## Tech Stack
 
 - **Backend**: NestJS, Google APIs (YouTube Data API), OpenAI API
@@ -86,6 +92,7 @@ SummaTube is a YouTube video summarization application that displays users' YouT
   - Multiple fallback mechanisms for transcript retrieval
   - Graceful error handling with user-friendly messages
   - Permission error detection and reauthorization flow
+  - Token validation error detection with automatic notification
   - Expired cache data used as fallback during API errors
 
 ### Code Architecture
@@ -94,6 +101,25 @@ SummaTube is a YouTube video summarization application that displays users' YouT
 - Service-based backend architecture with NestJS
 - API endpoints follow RESTful design with proper DTOs
 - Error handling with detailed typing and contextual messages
+
+### Authentication System
+
+- **OAuth Flow**: Complete YouTube OAuth2 implementation with token handling
+- **Token Management**:
+  - Secure token storage in localStorage with proper validation
+  - Automatic token refresh handling
+  - Token validation through Google's tokeninfo endpoint
+  - Token error detection with session storage notification flags
+- **Error Handling**:
+  - Comprehensive token validation error detection
+  - User-friendly notification banners for various auth errors
+  - TokenErrorBanner component for invalid token notifications
+  - PermissionErrorBanner for insufficient permissions
+  - Automatic cleanup of error states upon successful re-authentication
+- **User Experience**:
+  - Clear visual indicators for authentication state
+  - One-click reauthorization from error banners
+  - Non-disruptive notification system at screen bottom
 
 ## Code Conventions
 
@@ -117,6 +143,34 @@ SummaTube is a YouTube video summarization application that displays users' YouT
   - Server maintains disk cache as additional fallback
   - Session storage tracks quota status across page loads
   - Permission errors prompt reauthorization with proper scopes
+  - Token errors display user-friendly notification with re-login option
+
+## Recent Implementation Notes
+
+### Token Error Notification System (May 19, 2025)
+
+A new token error notification system has been implemented to improve the user experience when authentication tokens become invalid. This system includes:
+
+1. **TokenErrorBanner Component**: A new UI component that displays when a user's token is detected as invalid. It provides a clear message and a convenient button to re-authenticate.
+
+2. **Error Detection Extensions**:
+
+   - Enhanced error handling to specifically detect token validation errors
+   - Added `isTokenError` flag to the ApiError interface
+   - Backend logs token validation failures with detailed error messages
+
+3. **Session-Based Notification**:
+
+   - Uses session storage to track token error state
+   - Custom event system to notify components across the application
+   - Automatic cleanup upon successful re-authentication
+
+4. **Integration Points**:
+   - API interceptors detect and flag token validation errors
+   - Auth callback page clears error states upon successful login
+   - Token error banner displays consistently with other notification types
+
+This implementation ensures users are clearly informed when they're logged out due to invalid tokens, rather than being silently redirected to the login page.
 
 ## Development Guidelines
 
