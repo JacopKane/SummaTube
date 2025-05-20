@@ -3,6 +3,7 @@ import Head from 'next/head';
 import Header from './Header';
 import QuotaErrorBanner from './QuotaErrorBanner';
 import PermissionErrorBanner from './PermissionErrorBanner';
+import ScopeWarningBanner from './ScopeWarningBanner';
 
 interface PageLayoutProps {
   children: React.ReactNode;
@@ -40,6 +41,7 @@ export default function PageLayout({
     ),
     React.createElement(QuotaErrorBanner, null),
     React.createElement(PermissionErrorBanner, null),
+    React.createElement(ScopeWarningBanner, null),
     React.createElement(
       'footer',
       { className: 'bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 py-4' },

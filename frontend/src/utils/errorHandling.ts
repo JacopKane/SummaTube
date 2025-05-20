@@ -51,10 +51,12 @@ export function handleApiError(error: unknown): ApiError {
 
   // Check if it's a permission error
   const isPermissionError =
-    status === 403 &&
+    (status === 403 || status === 401) &&
     (message.toLowerCase().includes("permission") ||
       message.toLowerCase().includes("insufficient permissions") ||
       message.toLowerCase().includes("not sufficient") ||
+      message.toLowerCase().includes("required youtube api scopes") ||
+      responseData?.isPermissionError === true ||
       responseData?.error?.toLowerCase().includes("permission"));
 
   // Check if it's a case of captions not being available (rather than a permissions issue)

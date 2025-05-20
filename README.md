@@ -4,7 +4,7 @@ A YouTube video summarization app that provides AI-generated summaries of videos
 
 ## Features
 
-- **YouTube Integration**: OAuth authentication and real-time feed display
+- **YouTube Integration**: OAuth authentication with comprehensive permission handling and real-time feed display
 - **AI Summaries**: OpenAI-powered video transcript analysis and summarization
 - **Smart Caching**: Advanced multi-tiered caching system to minimize API usage
 - **Quota Protection**: API usage tracking with warnings and fallback systems

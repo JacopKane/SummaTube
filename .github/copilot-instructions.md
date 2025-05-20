@@ -4,6 +4,37 @@
 
 SummaTube is a YouTube video summarization application that displays users' YouTube feed with AI-generated summaries of video content. The application uses intelligent caching and quota management to provide reliable service while respecting API limits.
 
+## Recent Implementation Notes
+
+### Enhanced YouTube Permission Management System (May 19, 2025)
+
+A comprehensive permission handling system has been implemented to address YouTube API caption access issues:
+
+1. **Improved OAuth Flow**:
+
+   - Force consent screen to always appear to ensure users see all required permissions
+   - Disabled granular consent option to prevent scope fragmentation
+   - Proper handling of permission scope validation during token exchange
+
+2. **Enhanced Permission Error Detection**:
+
+   - More accurate identification of permission-related errors
+   - Explicit isPermissionError flag on error objects for reliable detection
+   - Detailed logging of available scopes during validation
+
+3. **User Interface Enhancements**:
+
+   - Added ScopeWarningBanner to alert users about potentially limited permissions
+   - Improved reauthorization flow with token clearing for cleaner auth restarts
+   - More informative error messages about required permissions
+
+4. **Token Management Improvements**:
+   - Clear validation of token scopes for caption access
+   - Timestamp parameters for OAuth URLs to prevent caching issues
+   - Enhanced scope checking with comprehensive logging
+
+These improvements ensure that users are properly guided to grant all necessary YouTube API permissions, especially those required for caption access, which are critical for the video summarization functionality.
+
 # Important instructions
 
 - Before answering say this out loud: "I'll update .github/copilot-instructions.md after implementing changes with detailed notes about what changed and how the system structure works now briefly"

@@ -8,7 +8,7 @@ export default function AuthCallback() {
   useEffect(() => {
     if (!router.isReady) return;
 
-    const { token, error, clearPermissionError } = router.query;
+    const { token, error, clearPermissionError, scopeWarning } = router.query;
     
     if (error) {
       console.error('Authentication error:', error);
@@ -39,6 +39,14 @@ export default function AuthCallback() {
           detail: { tokenError: false }
         })
       );
+      
+      // If we received a scope warning, set a flag but still proceed
+      if (scopeWarning === 'true') {
+        console.warn('Some requested YouTube scopes were not granted. Caption access may be limited.');
+        sessionStorage.setItem('youtube_scope_warning', 'true');
+      } else {
+        sessionStorage.removeItem('youtube_scope_warning');
+      }
       
       // Redirect to the feed page
       router.push('/feed');

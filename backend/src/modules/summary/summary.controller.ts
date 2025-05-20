@@ -57,10 +57,13 @@ export class SummaryController {
         (error.message && error.message.includes("Insufficient permissions"))
       ) {
         console.error("Permission error accessing captions:", error.message);
+        // Return a detailed error with explicit permission error flag
         throw new UnauthorizedException({
           message:
-            "Insufficient YouTube API permissions to access captions. Please reauthorize your account.",
+            "Insufficient YouTube API permissions to access captions. Please reauthorize your account with expanded permissions.",
           isPermissionError: true,
+          detail:
+            "Caption access requires full YouTube API authorization. Click the reauthorize button to grant all necessary permissions.",
         });
       } else if (
         error.message &&

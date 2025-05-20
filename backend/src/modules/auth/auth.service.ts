@@ -22,6 +22,7 @@ export class AuthService {
       "https://www.googleapis.com/auth/userinfo.email",
       "https://www.googleapis.com/auth/youtube.force-ssl",
       "https://www.googleapis.com/auth/youtube", // Full access to YouTube features
+      // Critical for caption access - needed for private/restricted videos
       "https://www.googleapis.com/auth/youtubepartner", // Partner access for captions
       "https://www.googleapis.com/auth/youtubepartner-channel-audit", // Additional partner access
     ];
@@ -33,9 +34,9 @@ export class AuthService {
       scope: scopes,
       include_granted_scopes: true,
       // Force consent for reauthorization to ensure user sees all requested scopes
-      prompt: reauth ? "consent" : undefined,
-      // Enable granular Google Account permissions
-      enable_granular_consent: true,
+      prompt: reauth ? "consent" : "consent", // Always show consent to ensure all scopes are presented
+      // Disable granular consent as it may cause scope fragmentation
+      enable_granular_consent: false,
     });
   }
 
@@ -81,23 +82,35 @@ export class AuthService {
       const tokenInfo = await this.validateToken(token);
 
       if (!tokenInfo || !tokenInfo.scope) {
+        console.warn("Token has no scopes or is invalid");
         return false;
       }
 
       const scopes = tokenInfo.scope.split(" ");
+      console.log("Token scopes:", scopes);
 
       // These are the scopes that can potentially provide captions access
+      // Listed in order of preference/importance
       const captionScopes = [
-        "https://www.googleapis.com/auth/youtube",
-        "https://www.googleapis.com/auth/youtube.force-ssl",
-        "https://www.googleapis.com/auth/youtubepartner",
-        "https://www.googleapis.com/auth/youtubepartner-channel-audit",
+        "https://www.googleapis.com/auth/youtube", // Full YouTube access (most reliable for captions)
+        "https://www.googleapis.com/auth/youtubepartner", // Partner access for captions
+        "https://www.googleapis.com/auth/youtubepartner-channel-audit", // Additional partner access
+        "https://www.googleapis.com/auth/youtube.force-ssl", // More limited but can work for some captions
       ];
 
       // Check if token has any of the required scopes
-      return captionScopes.some((requiredScope) =>
+      const hasRequiredScope = captionScopes.some((requiredScope) =>
         scopes.includes(requiredScope)
       );
+
+      if (!hasRequiredScope) {
+        console.warn(
+          "Token lacks required caption access scopes. Available scopes:",
+          scopes
+        );
+      }
+
+      return hasRequiredScope;
     } catch (error) {
       console.error("Error checking caption scopes:", error);
       return false;

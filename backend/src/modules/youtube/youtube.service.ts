@@ -253,9 +253,12 @@ export class YoutubeService {
               }
 
               // No more description fallback - just throw the error
-              throw new Error(
+              // Add isPermissionError flag for more specific handling
+              const err = new Error(
                 "Insufficient permissions to access captions. Please ensure you have the required YouTube API scopes."
               );
+              (err as any).isPermissionError = true;
+              throw err;
             } else if (
               errorMessage.includes(
                 "not have enabled third-party contributions"

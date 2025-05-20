@@ -33,9 +33,13 @@ export default function PermissionErrorBanner() {
 
   const handleReauthorize = async () => {
     try {
+      // First clear any existing auth tokens to ensure a fresh authentication flow
+      localStorage.removeItem('youtube_token');
+      
       // Redirect to YouTube auth with reauth=true to ensure all scopes are requested
       // This forces the consent screen to appear again with all required permissions
-      window.location.href = '/api/auth/youtube?reauth=true&prompt=consent';
+      // Adding timestamp to prevent caching issues with the OAuth flow
+      window.location.href = `/api/auth/youtube?reauth=true&prompt=consent&t=${Date.now()}`;
     } catch (error) {
       console.error('Failed to initiate reauthorization:', error);
     }

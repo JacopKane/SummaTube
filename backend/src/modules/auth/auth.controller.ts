@@ -24,6 +24,7 @@ export class AuthController {
     const code = req.query.code as string;
 
     if (!code) {
+      console.error("No authorization code received from Google OAuth");
       return res.redirect(
         `${this.configService.get("FRONTEND_URL")}?error=auth_failed`
       );
@@ -32,12 +33,28 @@ export class AuthController {
     try {
       const tokens = await this.authService.getTokens(code);
 
+      // Validate that we received proper scopes in the token
+      let missingScopes = false;
+      if (tokens && tokens.access_token) {
+        const tokenInfo = await this.authService.validateToken(
+          tokens.access_token
+        );
+        const hasCaptionsAccess = await this.authService.hasCaptionsAccessScope(
+          tokens.access_token
+        );
+
+        if (!hasCaptionsAccess) {
+          console.warn("Received token doesn't have captions access scopes!");
+          missingScopes = true;
+        }
+      }
+
       // When we get new tokens, add a flag to clear any permission errors
       // Redirect to frontend with the token and clear permission error flag
       return res.redirect(
         `${this.configService.get("FRONTEND_URL")}?token=${
           tokens.access_token
-        }&clearPermissionError=true`
+        }&clearPermissionError=true${missingScopes ? "&scopeWarning=true" : ""}`
       );
     } catch (error) {
       console.error("YouTube auth callback error:", error);
